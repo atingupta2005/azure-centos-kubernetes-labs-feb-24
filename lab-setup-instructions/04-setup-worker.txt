@@ -1,0 +1,55 @@
+## Cleanup
+sudo systemctl stop kubelet
+sudo systemctl disable kubelet
+echo y | sudo kubeadm reset
+sudo dnf remove kubeadm -y
+sudo dnf remove kubeadm kubectl kubelet kubernetes-cni kube*
+sudo dnf autoremove
+sudo rm -rf ~/.kube
+sudo rm -rf /etc/cni /etc/kubernetes rm -f /etc/apparmor.d/docker /etc/systemd/system/etcd*
+sudo rm -rf /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/lib/etcd2/ /var/run/kubernetes
+sudo rm -rf /etc/kubernetes/
+sudo systemctl reload-daemon
+sudo reboot
+
+# Install
+cat /etc/hosts
+sudo dnf install kubeadm -y
+sudo systemctl enable kubelet
+sudo systemctl start kubelet
+
+sudo cat /etc/containerd/config.toml
+
+sudo systemctl enable containerd && sudo systemctl start containerd
+sudo systemctl stop  containerd
+sudo systemctl start containerd
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+sudo kubeadm init --control-plane-endpoint "PUBLIC_IP:PORT"
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint "52.178.215.211:6443" --apiserver-advertise-address
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint "52.178.215.211:6443" --apiserver-advertise-address="52.178.215.211"
+
+
+# To start using your cluster, you need to run the following as a regular user:
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl get all -A
+kubectl get nodes
+
+wget https://calico-v3-25.netlify.app/archive/v3.25/manifests/calico.yaml
+#nano calico.yaml
+kubectl apply -f calico.yaml
+
+
+kubectl get nodes
+
+
+cat /etc/hosts
+sudo dnf install kubeadm -y
+sudo systemctl enable kubelet
+sudo systemctl start kubelet
+
+sudo kubeadm join 10.1.0.4:6443 --token 1ydrd7.hopl1esu6km0v61l \
+        --discovery-token-ca-cert-hash sha256:1ac5414678c5eb5416c117c0aa50847cd261befcf79813a42801a74e54cecc70

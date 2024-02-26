@@ -1,0 +1,94 @@
+## Cleanup
+sudo systemctl stop kubelet
+sudo systemctl disable kubelet
+echo y | sudo kubeadm reset
+sudo dnf remove docker -y
+sudo dnf remove containerd -y
+sudo dnf remove kubeadm -y
+sudo dnf remove kubeadm kubectl kubelet kubernetes-cni kube*
+sudo dnf autoremove
+sudo rm -rf ~/.kube
+sudo rm -rf /etc/cni /etc/kubernetes rm -f /etc/apparmor.d/docker /etc/systemd/system/etcd*
+sudo rm -rf /var/lib/dockershim /var/lib/etcd /var/lib/kubelet /var/lib/etcd2/ /var/run/kubernetes
+sudo rm -rf /etc/kubernetes/
+sudo systemctl reload-daemon
+sudo reboot
+
+# Install
+sudo swapoff -a
+ip link
+cat /sys/class/dmi/id/product_uuid
+sudo hostnamectl set-hostname master-node
+sudo hostnamectl set-hostname worker-node-1
+sudo hostnamectl set-hostname worker-node-2
+
+sudo setenforce 0
+sudo sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+ip addr
+
+cat /etc/hosts
+
+sudo cp /etc/hosts /etc/hosts.bkp
+sudo tee -a /etc/hosts > /dev/null <<EOT
+10.1.0.4 master-node
+10.1.0.5 worker-node-1
+10.1.0.6 worker-node-2
+EOT
+
+cat /etc/hosts
+
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh ./get-docker.sh
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -aG  docker $USER
+sudo docker ps
+sudo docker pull ubuntu
+
+sudo tee -a /etc/yum.repos.d/kubernetes.repo > /dev/null <<EOT
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOT
+
+sudo dnf install kubeadm -y
+sudo systemctl enable kubelet
+sudo systemctl start kubelet
+
+sudo cat /etc/containerd/config.toml
+sudo nano /etc/containerd/config.toml
+
+sed -i /disabled_plugins/\#disabled_plugins/' /etc/containerd/config.toml
+
+# Disbale disabled_plugins = ["cri"]
+
+sudo systemctl enable containerd && sudo systemctl start containerd
+sudo systemctl stop  containerd
+sudo systemctl start containerd
+
+sudo reboot
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+
+
+# To start using your cluster, you need to run the following as a regular user:
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl get all -A
+
+kubeadm join 10.1.0.4:6443 --token c59i02.5kiia1iw9tx4ydrp --discovery-token-ca-cert-hash  sha256:8d8364e92c627c9f7e62aeb05c1f27a612a80e6c7e7d420a4c95db86e82cc876
+
+wget https://calico-v3-25.netlify.app/archive/v3.25/manifests/calico.yaml
+nano calico.yaml
+kubectl apply -f calico.yaml
+
+kubeadm token create --print-join-command
+
+
+kubectl get nodes
