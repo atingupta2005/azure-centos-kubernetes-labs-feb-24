@@ -1,0 +1,47 @@
+subscriptions="0938814d-f452-42b4-9f1c-4647f822fb35"
+
+
+readarray -d "," -t all_subscriptions <<< "$subscriptions"
+
+locations="eastus,eastus2,centralus,northeurope,japaneast,uksouth,southcentralus,centralus,koreacentral,centralus,northeurope,japaneast"
+locations="centralus,uksouth,japaneast,italynorth,uaenorth"
+
+readarray -d "," -t all_locations <<< "$locations"
+
+username="atingupta2005"
+
+#echo "What’s the password for the VM: ?"
+#read -s password
+
+password="*******"
+
+echo "Your Password is: $password"
+
+vm_size="Standard_B2ms"
+num_vms=4
+
+for current_subscription in ${all_subscriptions[@]}
+do
+  echo "Working on Subscription: $current_subscription"
+  az account set --subscription $current_subscription
+  for location in ${all_locations[@]}
+  do
+    echo "Working on location: $location"
+    image=$(az vm image list --all -l $location --offer 'Windows-10' --publisher 'MicrosoftWindowsDesktop' -s 21h2-pro  --query '[].urn' -o tsv | grep 'Windows-10' | head -n 1)
+    echo "Image Name: $image"
+    az vm image terms accept --urn $image
+    lcn=$(echo $location | base64 | tr -dc '[:alpha:]' | fold -w ${1:-5} | head -n 1 | tr '[:upper:]' '[:lower:]')
+    resource_group="rg-win10-vms-$lcn"
+    az group create --name $resource_group --location $location --tags location=$location lcn=$lcn resource_group=$resource_group project=labs-k8s client=datavail vendor=florrance
+    for ((i=1; i<=$num_vms; i++)); do
+        vm_name="vmw-$lcn-$i"
+        az vm create --resource-group $resource_group --name $vm_name --image $image --admin-username $username --admin-password $password --location $location --size $vm_size --authentication-type password --storage-sku Standard_LRS --public-ip-sku Basic --public-ip-address-allocation static --tags vm_name=$vm_name location=$location lcn=$lcn resource_group=$resource_group project=labs-k8s client=datavail vendor=florrance
+    done
+    
+    az vm list -o table
+    az tag list -o table
+    az resource list --tag location=$location -o table
+    sleep 5
+
+  done
+done
